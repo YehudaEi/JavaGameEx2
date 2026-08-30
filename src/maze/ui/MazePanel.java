@@ -59,7 +59,7 @@ public class MazePanel extends JPanel {
         pathAnimation.clear();
         final int[] index = {0};
 
-        Timer t = new Timer(config.animationDelay, e -> {
+        Timer t = new Timer(config.getAnimationDelayMs(), e -> {
             if (index[0] < path.size()) {
                 pathAnimation.add(path.get(index[0]++));
                 repaint();
@@ -80,20 +80,20 @@ public class MazePanel extends JPanel {
         // ציור קירות ומעברים לפי צבע ה-wallColor מהשרת
         for (int r = 0; r < gridHeight; r++) {
             for (int c = 0; c < gridWidth; c++) {
-                g.setColor(isPassable[r][c] ? Color.WHITE : config.wallColor);
+                g.setColor(isPassable[r][c] ? Color.WHITE : config.getWallColor());
                 g.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
 
         // ציור נתיב פתרון באנימציה לפי pathColor מהשרת
-        g.setColor(config.pathColor);
+        g.setColor(config.getPathColor());
         for (Point p : pathAnimation) {
             g.fillRect(p.x * CELL_SIZE, p.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
 
         // ציור רשת במידה ו-drawGrid הוא true
-        if (config.drawGrid) {
-            g.setColor(config.gridColor);
+        if (config.isDrawGrid()) {
+            g.setColor(config.getGridColor());
             for (int r = 0; r <= gridHeight; r++) {
                 g.drawLine(0, r * CELL_SIZE, gridWidth * CELL_SIZE, r * CELL_SIZE);
             }

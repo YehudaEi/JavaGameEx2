@@ -50,7 +50,7 @@ public class MazeApp extends JFrame {
         new Thread(() -> {
             try {
                 config = ApiService.fetchRenderConfig();
-                infoLabel.setText("Delay: " + config.animationDelay + "ms | Grid: " + config.drawGrid);
+                infoLabel.setText("Delay: " + config.getAnimationDelayMs() + "ms | Grid: " + config.isDrawGrid());
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "שגיאה בטעינת הגדרות");
             }

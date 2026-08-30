@@ -45,6 +45,10 @@ public final class ApiService {
         try (InputStream input = connection.getInputStream()) {
             String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
             return RenderConfig.parse(json);
+        } catch (IllegalArgumentException e) {
+            // תשובה שהתקבלה במלואה אך אינה תקינה. נעטפת כדי שלקוחות המחלקה
+            // יצטרכו לטפל בסוג חריגה אחד בלבד.
+            throw new IOException("תשובת ההגדרות מהשרת אינה תקינה: " + e.getMessage(), e);
         } finally {
             connection.disconnect();
         }
