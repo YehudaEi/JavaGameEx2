@@ -1,14 +1,21 @@
 package maze;
 
-import maze.ui.MazeApp;
 import javax.swing.SwingUtilities;
 
-public class Main {
+import maze.ui.MainFrame;
+
+/**
+ * נקודת הכניסה לתוכנית.
+ * <p>
+ * החלון נבנה בתוך {@code invokeLater} ולא ב-thread הראשי, משום שרכיבי Swing
+ * מיועדים לשימוש מ-Event Dispatch Thread בלבד.
+ */
+public final class Main {
+
+    private Main() {
+    }
+
     public static void main(String[] args) {
-        // הרצת ממשק המשתמש ב-Event Dispatch Thread של Swing
-        SwingUtilities.invokeLater(() -> {
-            MazeApp app = new MazeApp();
-            app.setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }
