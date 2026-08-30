@@ -49,7 +49,7 @@ public class MazeApp extends JFrame {
     private void fetchConfig() {
         new Thread(() -> {
             try {
-                config = ApiService.getConfig();
+                config = ApiService.fetchRenderConfig();
                 infoLabel.setText("Delay: " + config.animationDelay + "ms | Grid: " + config.drawGrid);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "שגיאה בטעינת הגדרות");
@@ -63,7 +63,7 @@ public class MazeApp extends JFrame {
 
         new Thread(() -> {
             try {
-                BufferedImage img = ApiService.getMazeImage(width, height);
+                BufferedImage img = ApiService.fetchMazeImage(width, height);
                 SwingUtilities.invokeLater(() -> {
                     mazePanel.setMaze(img, config, width, height);
                     checkBtn.setEnabled(true);
