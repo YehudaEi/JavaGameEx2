@@ -1,5 +1,6 @@
 package maze.ui;
 
+import maze.model.MazeGrid;
 import maze.model.MazeSolver;
 import maze.model.RenderConfig;
 import maze.util.ApiService;
@@ -65,7 +66,7 @@ public class MazeApp extends JFrame {
             try {
                 BufferedImage img = ApiService.fetchMazeImage(width, height);
                 SwingUtilities.invokeLater(() -> {
-                    mazePanel.setMaze(img, config, width, height);
+                    mazePanel.setMaze(MazeGrid.fromImage(img, width, height), config);
                     checkBtn.setEnabled(true);
                     pack();
                 });
@@ -88,7 +89,7 @@ public class MazeApp extends JFrame {
         if (mazePanel.isAnimating()) return;
         checkBtn.setEnabled(false);
 
-        List<Point> path = MazeSolver.solve(mazePanel.getIsPassable(), width, height);
+        List<Point> path = MazeSolver.solve(mazePanel.getGrid());
         if (path.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No solution found");
             checkBtn.setEnabled(true);

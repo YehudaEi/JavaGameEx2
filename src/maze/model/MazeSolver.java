@@ -1,60 +1,79 @@
 package maze.model;
 
 import java.awt.Point;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
 
-public class MazeSolver {
-    public static List<Point> solve(boolean[][] isPassable, int width, int height) {
-        List<Point> path = new ArrayList<>();
+/**
+ * מציאת מסלול מהמשבצת השמאלית העליונה אל הימנית התחתונה.
+ * <p>
+ * המימוש הוא BFS, ולכן המסלול שמוחזר הוא גם הקצר ביותר. תנועה מותרת בארבעה
+ * כיוונים בלבד - למעלה, למטה, שמאלה וימינה - ורק דרך משבצות מעבר.
+ */
+public final class MazeSolver {
 
-        // בדיקת נקודת התחלה (0,0) ונקודת סיום (width-1, height-1)
-        if (!isPassable[0][0] || !isPassable[height - 1][width - 1]) {
-            return path;
+    /** ההיסטים לארבעת הכיוונים: למעלה, למטה, שמאלה וימינה. אין אלכסונים. */
+    private static final int[] COLUMN_STEPS = {0, 0, -1, 1};
+    private static final int[] ROW_STEPS = {-1, 1, 0, 0};
+
+    private MazeSolver() {
+    }
+
+    /**
+     * מחפש מסלול מ-{@code (0, 0)} אל {@code (width - 1, height - 1)}.
+     *
+     * @param grid המבוך
+     * @return המסלול לפי הסדר, מההתחלה עד הסוף, או רשימה ריקה אם אין פתרון.
+     *         בכל {@link Point} מתקיים {@code x = col} ו-{@code y = row}.
+     */
+    public static List<Point> solve(MazeGrid grid) {
+        int width = grid.getWidth();
+        int height = grid.getHeight();
+        int goalCol = width - 1;
+        int goalRow = height - 1;
+
+        // מבוך שההתחלה או הסיום שלו הם קיר אינו פתיר, ואין טעם לחפש בו.
+        if (!grid.isOpen(0, 0) || !grid.isOpen(goalCol, goalRow)) {
+            return List.of();
         }
 
+        Point[][] cameFrom = new Point[height][width];
         boolean[][] visited = new boolean[height][width];
-        Point[][] parent = new Point[height][width];
-        Queue<Point> q = new LinkedList<>();
+        Deque<Point> queue = new ArrayDeque<>();
 
-        q.add(new Point(0, 0));
+        queue.add(new Point(0, 0));
         visited[0][0] = true;
 
-        // תנועה: למעלה, למטה, שמאלה, ימינה
-        int[] dr = {-1, 1, 0, 0};
-        int[] dc = {0, 0, -1, 1};
-
-        boolean reached = false;
-
-        while (!q.isEmpty()) {
-            Point curr = q.poll();
-
-            if (curr.x == width - 1 && curr.y == height - 1) {
-                reached = true;
-                break;
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            if (current.x == goalCol && current.y == goalRow) {
+                return buildPath(cameFrom, current);
             }
 
-            for (int i = 0; i < 4; i++) {
-                int nr = curr.y + dr[i];
-                int nc = curr.x + dc[i];
+            for (int direction = 0; direction < COLUMN_STEPS.length; direction++) {
+                int col = current.x + COLUMN_STEPS[direction];
+                int row = current.y + ROW_STEPS[direction];
 
-                if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
-                    if (isPassable[nr][nc] && !visited[nr][nc]) {
-                        visited[nr][nc] = true;
-                        parent[nr][nc] = curr;
-                        q.add(new Point(nc, nr));
-                    }
+                if (grid.isOpen(col, row) && !visited[row][col]) {
+                    visited[row][col] = true;
+                    cameFrom[row][col] = current;
+                    queue.add(new Point(col, row));
                 }
             }
         }
+        return List.of();
+    }
 
-        if (reached) {
-            Point p = new Point(width - 1, height - 1);
-            while (p != null) {
-                path.add(0, p);
-                p = parent[p.y][p.x];
-            }
+    /** משחזר את המסלול לאחור מהיעד עד ההתחלה, ומחזיר אותו בסדר הנכון. */
+    private static List<Point> buildPath(Point[][] cameFrom, Point goal) {
+        List<Point> path = new ArrayList<>();
+        for (Point step = goal; step != null; step = cameFrom[step.y][step.x]) {
+            path.add(step);
         }
-
+        Collections.reverse(path);
         return path;
     }
 }
