@@ -47,6 +47,9 @@ public class ConfigPanel extends JPanel {
     private final JButton getMazeButton = new JButton("GET MAZE");
     private final JLabel statusLabel = new JLabel(" ");
 
+    /** האם כבר התקבלו הגדרות מהשרת. בלעדיהן אין במה לצייר מבוך. */
+    private boolean hasConfig;
+
     /**
      * @param onRefresh מופעל בלחיצה על Refresh Config
      * @param onGetMaze מופעל בלחיצה על GET MAZE
@@ -129,24 +132,21 @@ public class ConfigPanel extends JPanel {
         gridColorField.setColor(config.getGridColor());
         drawGridValue.setText(String.valueOf(config.isDrawGrid()));
         animationDelayValue.setText(config.getAnimationDelayMs() + " ms");
+        hasConfig = true;
         getMazeButton.setEnabled(true);
     }
 
     /**
-     * הרוחב שנבחר, לאחר בדיקה ותיקון.
+     * קורא את הגודל שנבחר, מתקן ערך לא חוקי, <b>וכותב את התוצאה חזרה לשדות</b>.
      * <p>
-     * הערך המתוקן נכתב חזרה לשדה, כדי שהמשתמש יראה באיזה גודל התוכנית באמת
-     * משתמשת ולא יישאר מול הערך הפסול שהקליד.
+     * הכתיבה חזרה היא הנקודה: משתמש שהקליד 200 צריך לראות 30, ולא להישאר מול
+     * הערך הפסול בזמן שהתוכנית משתמשת באחר. מכיוון שזו פעולה שמשנה את המסך היא
+     * מתוארת בשם המתודה ואינה מוסתרת מאחורי getter תמים.
      *
-     * @return ערך בטווח המותר
+     * @return הרוחב והגובה שיש להשתמש בהם, שניהם בטווח המותר
      */
-    public int getRequestedWidth() {
-        return readSize(widthField);
-    }
-
-    /** הגובה שנבחר, לאחר אותה בדיקה ותיקון כמו ב-{@link #getRequestedWidth()}. */
-    public int getRequestedHeight() {
-        return readSize(heightField);
+    public Dimension readAndNormalizeSize() {
+        return new Dimension(readSize(widthField), readSize(heightField));
     }
 
     /**
@@ -158,7 +158,7 @@ public class ConfigPanel extends JPanel {
     public void setBusy(boolean busy, String message) {
         refreshButton.setEnabled(!busy);
         // GET MAZE נשאר מנוטרל גם אחרי הבקשה כל עוד אין הגדרות להציג.
-        getMazeButton.setEnabled(!busy && wallColorField.hasColor());
+        getMazeButton.setEnabled(!busy && hasConfig);
         widthField.setEnabled(!busy);
         heightField.setEnabled(!busy);
         statusLabel.setText(message == null || message.isEmpty() ? " " : message);
@@ -202,7 +202,6 @@ public class ConfigPanel extends JPanel {
 
         private final JPanel swatch = new JPanel();
         private final JLabel hexLabel = new JLabel("-");
-        private boolean hasColor;
 
         ColorField() {
             setLayout(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -218,11 +217,6 @@ public class ConfigPanel extends JPanel {
             swatch.setBackground(color);
             swatch.setVisible(true);
             hexLabel.setText(String.format("#%06X", color.getRGB() & 0xFFFFFF));
-            hasColor = true;
-        }
-
-        boolean hasColor() {
-            return hasColor;
         }
     }
 }

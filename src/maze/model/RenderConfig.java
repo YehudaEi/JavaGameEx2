@@ -16,10 +16,14 @@ import java.util.regex.Pattern;
 public final class RenderConfig {
 
     /**
-     * מאתר {@code "key": value} ומאפשר רווחים סביב הנקודתיים.
+     * מאתר {@code "key": value} ומאפשר רווח לבן מכל סוג סביב הנקודתיים.
      * הקבוצה הראשונה תופסת ערך במרכאות, השנייה ערך חשוף כמו מספר או בוליאני.
+     * <p>
+     * שימו לב ל-{@code \\s} הכפול: ב-Java 15 ומעלה {@code "\s"} במחרוזת הוא תו
+     * רווח בודד ולא מחלקת הרווח הלבן של הביטוי הרגולרי, וכתיב כזה היה מכשיל
+     * פענוח של JSON עם טאבים או ירידות שורה.
      */
-    private static final String FIELD_PATTERN = "\"%s\"\s*:\s*(?:\"([^\"]*)\"|([^,}\s]+))";
+    private static final String FIELD_PATTERN = "\"%s\"\\s*:\\s*(?:\"([^\"]*)\"|([^,}\\s]+))";
 
     private final Color wallColor;
     private final Color pathColor;
@@ -27,7 +31,12 @@ public final class RenderConfig {
     private final Color gridColor;
     private final int animationDelayMs;
 
-    public RenderConfig(Color wallColor, Color pathColor, boolean drawGrid, Color gridColor, int animationDelayMs) {
+    /**
+     * פרטי בכוונה: {@link #parse(String)} היא הדרך היחידה ליצור הגדרות, וכך כל
+     * מופע עובר את אותן בדיקות. בנאי ציבורי היה מאפשר ליצור הגדרות עם צבע
+     * {@code null} או עם זמן שלילי, ולעקוף את מה שהתיעוד כאן מבטיח.
+     */
+    private RenderConfig(Color wallColor, Color pathColor, boolean drawGrid, Color gridColor, int animationDelayMs) {
         this.wallColor = wallColor;
         this.pathColor = pathColor;
         this.drawGrid = drawGrid;
@@ -90,17 +99,24 @@ public final class RenderConfig {
         return (quoted != null ? quoted : matcher.group(2)).trim();
     }
 
-    /** ממיר {@code "#RRGGBB"} או {@code "RRGGBB"} ל-{@link Color}, בכל רישיות. */
+    /**
+     * ממיר {@code "#RRGGBB"} או {@code "RRGGBB"} ל-{@link Color}, בכל רישיות.
+     * <p>
+     * נבדקת כל ספרה בנפרד ולא רק אורך המחרוזת, משום ש-{@code Integer.parseInt}
+     * מקבל גם סימן מוביל: {@code "-FFFFF"} הוא באורך שש, והיה מתקבל בשקט כצבע
+     * אחר לגמרי במקום להיפסל.
+     */
     private static Color parseColor(String value, String key) {
         String hex = value.startsWith("#") ? value.substring(1) : value;
         if (hex.length() != 6) {
             throw new IllegalArgumentException("ערך צבע לא תקין עבור " + key + ": " + value);
         }
-        try {
-            return new Color(Integer.parseInt(hex, 16));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("ערך צבע לא תקין עבור " + key + ": " + value, e);
+        for (int i = 0; i < hex.length(); i++) {
+            if (Character.digit(hex.charAt(i), 16) < 0) {
+                throw new IllegalArgumentException("ערך צבע לא תקין עבור " + key + ": " + value);
+            }
         }
+        return new Color(Integer.parseInt(hex, 16));
     }
 
     /**

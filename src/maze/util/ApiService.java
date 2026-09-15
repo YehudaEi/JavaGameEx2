@@ -77,17 +77,27 @@ public final class ApiService {
         }
     }
 
-    /** פותח חיבור עם timeout ומוודא שהשרת החזיר 200 לפני שקוראים את גוף התשובה. */
+    /**
+     * פותח חיבור עם timeout ומוודא שהשרת החזיר 200 לפני שקוראים את גוף התשובה.
+     * <p>
+     * החיבור נסגר כאן בכל מסלול כישלון. {@code getResponseCode} עצמה זורקת
+     * כשהחיבור נכשל או פג זמנו, ובלי ה-{@code catch} החיבור היה נותר פתוח -
+     * הקורא אינו יכול לסגור חיבור שמעולם לא הוחזר לו.
+     */
     private static HttpURLConnection openConnection(String path) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) URI.create(BASE_URL + path).toURL().openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(READ_TIMEOUT_MS);
 
-        int status = connection.getResponseCode();
-        if (status != HttpURLConnection.HTTP_OK) {
+        try {
+            int status = connection.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                throw new IOException("השרת החזיר סטטוס " + status + " עבור " + path);
+            }
+            return connection;
+        } catch (IOException | RuntimeException e) {
             connection.disconnect();
-            throw new IOException("השרת החזיר סטטוס " + status + " עבור " + path);
+            throw e;
         }
-        return connection;
     }
 }

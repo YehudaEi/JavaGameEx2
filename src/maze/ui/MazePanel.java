@@ -93,8 +93,13 @@ public class MazePanel extends JPanel {
         int[] nextIndex = {0};
         animation = new Timer(config.getAnimationDelayMs(), event -> {
             if (nextIndex[0] < path.size()) {
-                revealedPath.add(path.get(nextIndex[0]++));
-                repaint();
+                Point cell = path.get(nextIndex[0]++);
+                revealedPath.add(cell);
+
+                // רק המשבצת החדשה מצוירת מחדש. repaint() ללא ארגומנטים היה מצייר
+                // מחדש את כל המבוך בכל פעימה - 10,000 משבצות במבוך 100x100, לאורך
+                // כל האנימציה. paintComponent ממילא מצייר רק את מה שה-clip מכסה.
+                repaint(cell.x * CELL_SIZE, cell.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             } else {
                 stopAnimation();
                 if (onFinished != null) {
@@ -127,12 +132,20 @@ public class MazePanel extends JPanel {
         }
 
         if (config.isDrawGrid()) {
+            // הקו הסוגר יושב על הפיקסל האחרון של הפאנל ולא אחריו. ציור ב-
+            // width * CELL_SIZE נופל מחוץ לתחום הפיקסלים 0..width*CELL_SIZE-1,
+            // ולכן קווי הגבול הימני והתחתון פשוט לא היו מצוירים.
+            int lastX = grid.getWidth() * CELL_SIZE - 1;
+            int lastY = grid.getHeight() * CELL_SIZE - 1;
+
             g.setColor(config.getGridColor());
             for (int row = 0; row <= grid.getHeight(); row++) {
-                g.drawLine(0, row * CELL_SIZE, grid.getWidth() * CELL_SIZE, row * CELL_SIZE);
+                int y = Math.min(row * CELL_SIZE, lastY);
+                g.drawLine(0, y, lastX, y);
             }
             for (int col = 0; col <= grid.getWidth(); col++) {
-                g.drawLine(col * CELL_SIZE, 0, col * CELL_SIZE, grid.getHeight() * CELL_SIZE);
+                int x = Math.min(col * CELL_SIZE, lastX);
+                g.drawLine(x, 0, x, lastY);
             }
         }
     }

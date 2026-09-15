@@ -1,6 +1,8 @@
 package maze;
 
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
@@ -10,6 +12,7 @@ import java.util.Set;
 import maze.model.MazeGrid;
 import maze.model.MazeSolver;
 import maze.model.RenderConfig;
+import maze.ui.MazePanel;
 import maze.util.ApiService;
 
 /**
@@ -29,6 +32,9 @@ import maze.util.ApiService;
  */
 public final class MazeTests {
 
+    /** חייב להתאים ל-{@code CELL_SIZE} שב-{@link MazePanel}. */
+    private static final int CELL_SIZE = 20;
+
     private static int passed;
     private static int failed;
 
@@ -37,34 +43,36 @@ public final class MazeTests {
 
     public static void main(String[] args) {
         section("RenderConfig.parse");
-        testParsesTheFormatTheServerReturns();
-        testToleratesWhitespaceAroundValues();
-        testAcceptsColoursInAnyForm();
-        testRejectsMissingFields();
-        testRejectsMalformedValues();
-        testClampsNegativeDelay();
+        run("parses the format the server returns", MazeTests::testParsesTheFormatTheServerReturns);
+        run("tolerates whitespace", MazeTests::testToleratesWhitespaceAroundValues);
+        run("accepts colours in any form", MazeTests::testAcceptsColoursInAnyForm);
+        run("rejects missing fields", MazeTests::testRejectsMissingFields);
+        run("rejects malformed values", MazeTests::testRejectsMalformedValues);
+        run("clamps a negative delay", MazeTests::testClampsNegativeDelay);
 
         section("MazeGrid.fromImage");
-        testScaledAndUnscaledImagesAgree();
-        testOnlyWhiteIsOpen();
-        testKeepsRowsAndColumnsApart();
-        testRejectsImagesSmallerThanTheMaze();
+        run("scaled and unscaled agree", MazeTests::testScaledAndUnscaledImagesAgree);
+        run("only white is open", MazeTests::testOnlyWhiteIsOpen);
+        run("keeps rows and columns apart", MazeTests::testKeepsRowsAndColumnsApart);
+        run("rejects undersized images", MazeTests::testRejectsImagesSmallerThanTheMaze);
 
         section("MazeSolver.solve");
-        testStraightCorridor();
-        testSingleCell();
-        testBlockedStart();
-        testBlockedGoal();
-        testDisconnectedComponents();
-        testReturnsTheShortestPath();
-        testMovesInFourDirectionsOnly();
+        run("straight corridor", MazeTests::testStraightCorridor);
+        run("single cell", MazeTests::testSingleCell);
+        run("blocked start", MazeTests::testBlockedStart);
+        run("blocked goal", MazeTests::testBlockedGoal);
+        run("disconnected components", MazeTests::testDisconnectedComponents);
+        run("returns the shortest path", MazeTests::testReturnsTheShortestPath);
+        run("four directions only", MazeTests::testMovesInFourDirectionsOnly);
 
+        section("MazePanel drawing");
+        run("grid closes the border", MazeTests::testGridLinesCloseTheBorder);
+
+        section("Live server");
         if (isLive(args)) {
-            section("Live server");
-            testLiveConfig();
-            testLiveMazes();
+            run("live config", MazeTests::testLiveConfig);
+            run("live mazes", MazeTests::testLiveMazes);
         } else {
-            section("Live server");
             System.out.println("  skipped, pass --live to run");
         }
 
@@ -73,6 +81,21 @@ public final class MazeTests {
                 ? "All " + passed + " checks passed."
                 : failed + " of " + (passed + failed) + " checks FAILED.");
         System.exit(failed == 0 ? 0 : 1);
+    }
+
+    /**
+     * מריץ בדיקה אחת ותופס חריגה בלתי צפויה.
+     * <p>
+     * בלי זה חריגה בבדיקה אחת הייתה מפילה את כל הריצה: כל הקטעים שאחריה לא היו
+     * רצים, וגם שורת הסיכום לא הייתה מודפסת. תקלה אחת מסתירה את כל השאר.
+     */
+    private static void run(String name, Runnable test) {
+        try {
+            test.run();
+        } catch (RuntimeException | AssertionError e) {
+            failed++;
+            System.out.println("  FAIL  " + name + " threw " + e);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -92,17 +115,40 @@ public final class MazeTests {
     }
 
     /**
-     * רגרסיה: המפענח הקודם חיפש בדיוק {@code "key":} ולכן רווח אחד היה מפיל את
+     * רגרסיה כפולה.
+     * <p>
+     * ראשית, המפענח המקורי חיפש בדיוק {@code "key":}, ולכן רווח אחד היה מפיל את
      * כל השדות אל ערכי ברירת מחדל שהיו כתובים בקוד, בלי שום סימן למשתמש.
+     * <p>
+     * שנית - וזו הסיבה שיש כאן טאבים וירידות שורה ולא רווחים בלבד - הביטוי
+     * הרגולרי נכתב בשלב מסוים עם {@code "\s"} במקום {@code "\\s"}. מ-Java 15
+     * זהו תו רווח בודד ולא מחלקת הרווח הלבן, ולכן טאב או ירידת שורה סביב
+     * הנקודתיים הפילו את הפענוח. בדיקה שמשתמשת ברווחים בלבד עוברת גם אז, כלומר
+     * היא מאשרת בדיוק את ההתנהגות השבורה.
      */
     private static void testToleratesWhitespaceAroundValues() {
-        RenderConfig config = RenderConfig.parse("{\n  \"wallCellColor\" : \"#101010\" ,\n"
+        RenderConfig spaces = RenderConfig.parse("{\n  \"wallCellColor\" : \"#101010\" ,\n"
                 + "  \"pathColor\" : \"#202020\" ,\n  \"drawGrid\" : false ,\n"
                 + "  \"gridColor\" : \"#303030\" ,\n  \"animationDelayMs\" : 15\n}");
 
-        check("pretty printed wall colour", new Color(0x101010).equals(config.getWallColor()));
-        check("pretty printed draw grid", !config.isDrawGrid());
-        check("pretty printed delay", config.getAnimationDelayMs() == 15);
+        check("pretty printed wall colour", new Color(0x101010).equals(spaces.getWallColor()));
+        check("pretty printed draw grid", !spaces.isDrawGrid());
+        check("pretty printed delay", spaces.getAnimationDelayMs() == 15);
+
+        RenderConfig tabs = RenderConfig.parse("{\"wallCellColor\"\t:\t\"#101010\",\"pathColor\":\"#202020\","
+                + "\"drawGrid\"\t:\ttrue,\"gridColor\":\"#303030\",\"animationDelayMs\"\t:\t15}");
+        check("tab around the colon",
+                new Color(0x101010).equals(tabs.getWallColor()) && tabs.isDrawGrid());
+
+        RenderConfig newlines = RenderConfig.parse("{\"wallCellColor\":\n\"#101010\",\"pathColor\":\n\"#202020\","
+                + "\"drawGrid\":\ntrue,\"gridColor\":\n\"#303030\",\"animationDelayMs\":\n15}");
+        check("newline after the colon",
+                new Color(0x101010).equals(newlines.getWallColor()) && newlines.getAnimationDelayMs() == 15);
+
+        RenderConfig crlf = RenderConfig.parse("{\r\n  \"wallCellColor\" : \"#101010\",\r\n"
+                + "  \"pathColor\" : \"#202020\",\r\n  \"drawGrid\" : true,\r\n"
+                + "  \"gridColor\" : \"#303030\",\r\n  \"animationDelayMs\" : 15\r\n}");
+        check("CRLF line endings", new Color(0x303030).equals(crlf.getGridColor()));
     }
 
     private static void testAcceptsColoursInAnyForm() {
@@ -133,6 +179,13 @@ public final class MazeTests {
                 throwsIllegalArgument(() -> RenderConfig.parse(json("#222222", "#00AA00", "yes", "#CCCCCC", "80"))));
         check("non numeric delay is rejected",
                 throwsIllegalArgument(() -> RenderConfig.parse(json("#222222", "#00AA00", "true", "#CCCCCC", "fast"))));
+
+        // Integer.parseInt מקבל סימן מוביל, ולכן מחרוזת באורך שש עם מינוס או פלוס
+        // עברה פעם את בדיקת האורך והפכה בשקט לצבע אחר לגמרי.
+        check("negative hex colour is rejected",
+                throwsIllegalArgument(() -> RenderConfig.parse(json("-FFFFF", "#00AA00", "true", "#CCCCCC", "80"))));
+        check("signed hex colour is rejected",
+                throwsIllegalArgument(() -> RenderConfig.parse(json("+ABCDE", "#00AA00", "true", "#CCCCCC", "80"))));
     }
 
     /** זמן שלילי אינו חוקי עבור Timer של Swing, ולכן נחתך לאפס. */
@@ -252,6 +305,60 @@ public final class MazeTests {
     private static void testMovesInFourDirectionsOnly() {
         // מעבר אלכסוני בלבד בין שני החצאים - ולכן אין מסלול חוקי
         check("diagonal moves are not allowed", solve(".#", "#.").isEmpty());
+    }
+
+    // ------------------------------------------------------------------
+    // MazePanel
+    // ------------------------------------------------------------------
+
+    /**
+     * רגרסיה: קווי הרשת הסוגרים צוירו ב-{@code width * CELL_SIZE}, שהוא פיקסל
+     * אחד מעבר לתחום הפאנל, ולכן הגבול הימני והתחתון של המבוך פשוט לא הופיעו.
+     * <p>
+     * הפאנל מצויר אל תוך {@link BufferedImage} ולא על המסך, ולכן הבדיקה אינה
+     * דורשת חלון ורצה גם ללא תצוגה.
+     */
+    private static void testGridLinesCloseTheBorder() {
+        int gridColour = 0x0000FF;
+        RenderConfig config = RenderConfig.parse(json("#000000", "#FF0000", "true", "#0000FF", "10"));
+        MazeGrid grid = MazeGrid.fromImage(image(new String[]{"...", "..."}, 1), 3, 2);
+
+        MazePanel panel = new MazePanel();
+        panel.setMaze(grid, config);
+        Dimension size = panel.getPreferredSize();
+        panel.setSize(size);
+
+        BufferedImage rendered = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = rendered.createGraphics();
+        panel.paint(graphics);
+        graphics.dispose();
+
+        // נדגם דרך מרכז משבצת, כך שרק הקווים הניצבים לכיוון הסריקה נספרים
+        int middleOfFirstRow = CELL_SIZE / 2;
+        check("left border is drawn", (rendered.getRGB(0, middleOfFirstRow) & 0xFFFFFF) == gridColour);
+        check("top border is drawn", (rendered.getRGB(middleOfFirstRow, 0) & 0xFFFFFF) == gridColour);
+        check("right border is drawn",
+                (rendered.getRGB(size.width - 1, middleOfFirstRow) & 0xFFFFFF) == gridColour);
+        check("bottom border is drawn",
+                (rendered.getRGB(middleOfFirstRow, size.height - 1) & 0xFFFFFF) == gridColour);
+
+        // ובלי drawGrid אין לצייר קווים כלל
+        RenderConfig noGrid = RenderConfig.parse(json("#000000", "#FF0000", "false", "#0000FF", "10"));
+        MazePanel plain = new MazePanel();
+        plain.setMaze(grid, noGrid);
+        plain.setSize(size);
+        BufferedImage withoutGrid = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D plainGraphics = withoutGrid.createGraphics();
+        plain.paint(plainGraphics);
+        plainGraphics.dispose();
+
+        boolean anyGridPixel = false;
+        for (int y = 0; y < size.height; y++) {
+            for (int x = 0; x < size.width; x++) {
+                anyGridPixel |= (withoutGrid.getRGB(x, y) & 0xFFFFFF) == gridColour;
+            }
+        }
+        check("drawGrid false draws no grid lines", !anyGridPixel);
     }
 
     // ------------------------------------------------------------------

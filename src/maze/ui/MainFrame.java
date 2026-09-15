@@ -140,8 +140,9 @@ public class MainFrame extends JFrame {
      * 100x100 סורק 10,000 משבצות, ואין סיבה להעמיס זאת על ה-EDT.
      */
     private void loadMaze() {
-        int width = configPanel.getRequestedWidth();
-        int height = configPanel.getRequestedHeight();
+        Dimension requested = configPanel.readAndNormalizeSize();
+        int width = requested.width;
+        int height = requested.height;
         RenderConfig activeConfig = config;
 
         configPanel.setBusy(true, "Loading maze " + width + "x" + height + "...");
@@ -230,10 +231,16 @@ public class MainFrame extends JFrame {
         setSize(Math.min(getWidth(), screen.width), Math.min(getHeight(), screen.height));
     }
 
-    /** מציג את סיבת הכישלון האמיתית ולא את העטיפה של {@link ExecutionException}. */
+    /**
+     * מציג את סיבת הכישלון האמיתית ולא את העטיפה של {@link ExecutionException}.
+     * <p>
+     * לחריגה שאין לה הודעה - למשל {@code NullPointerException} - מוצג שם המחלקה,
+     * אחרת הדיאלוג היה מציג למשתמש את המילה "null" בלבד.
+     */
     private void showError(String title, ExecutionException failure) {
         Throwable cause = failure.getCause() != null ? failure.getCause() : failure;
-        JOptionPane.showMessageDialog(this, title + ":\n" + cause.getMessage(),
+        String detail = cause.getMessage() != null ? cause.getMessage() : cause.toString();
+        JOptionPane.showMessageDialog(this, title + ":\n" + detail,
                 title, JOptionPane.ERROR_MESSAGE);
     }
 }
