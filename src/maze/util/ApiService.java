@@ -16,10 +16,6 @@ import maze.model.RenderConfig;
  * <p>
  * שתי המתודות הציבוריות חוסמות עד לקבלת התשובה, ולכן אין לקרוא להן מתוך
  * Event Dispatch Thread של Swing. שכבת התצוגה מפעילה אותן דרך {@code SwingWorker}.
- * <p>
- * <b>הערה על הכתובת:</b> שני ה-endpoints נמצאים על אותו מארח.
- * ההנחיות מפנות עבור תמונת המבוך אל {@code backend-qcf9.onrender.com}, אבל אותו
- * מארח מחזיר 404 לשתי הכתובות, ולכן אנו פונים למארח שמצוין בכל שאר ההנחיות.
  */
 public final class ApiService {
 
